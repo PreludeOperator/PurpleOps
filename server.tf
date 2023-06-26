@@ -7,6 +7,13 @@ resource "aws_security_group" "RDP" {
     protocol    = "tcp"
     cidr_blocks = local.host_ip_address
   }
+  
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
 
   egress {
     from_port   = 0
@@ -21,7 +28,7 @@ resource "aws_security_group" "RDP" {
 }
 
 resource "aws_instance" "DC-1" {
-	ami           = "ami-0b003c3b118dbe3fe"
+	ami           = "ami-0b003c3b118dbe3fe" # Windows Server 2016
 	instance_type = "t2.micro"
 	subnet_id = aws_subnet.BlueOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RDP.id]
@@ -32,7 +39,8 @@ resource "aws_instance" "DC-1" {
 	user_data = <<EOF
 <powershell>
 try{
-	if(!(aws help)){
+	if(!(aws help)){ # Check if AWS CLI exists
+		# Download AWS CLI tools
 		msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi /qn
 		sleep 60
 		Restart-Computer
@@ -40,12 +48,13 @@ try{
 }
 catch{}
 try{
-	if (!(dir C:\Windows\Temp\dc.ps1)){
+	if (!(dir C:\Windows\Temp\dc.ps1)){ # Check if dc.ps1 exists.
+		# Download dc.ps1 from s3 and delete it.
 		aws s3 cp ${var.object_s3_uri} C:\Windows\Temp\dc.ps1 --no-sign-request
 		aws s3 rm s3://terraform-20230623081717557100000001/dc.ps1 --no-sign-request
 	}
 catch{}
-Set-ExecutionPolicy RemoteSigned 
+Set-ExecutionPolicy RemoteSigned # Allow powershell script to run properly.
 C:\Windows\Temp\dc.ps1
 </powershell>
 <persist>true</persist>
@@ -64,7 +73,7 @@ EOF
 }
 
 resource "aws_instance" "SRV-1" {
-	ami           = "ami-0b003c3b118dbe3fe"
+	ami           = "ami-0b003c3b118dbe3fe" # Windows Server 2016
 	instance_type = "t2.micro"
 	subnet_id = aws_subnet.BlueOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RDP.id]
@@ -74,14 +83,14 @@ resource "aws_instance" "SRV-1" {
 	depends_on = [aws_internet_gateway.PurpleOps-IG]
 	user_data = <<EOF
 <powershell>
-if ((hostname) -ne "SRV-1"){
+if ((hostname) -ne "SRV-1"){ # Check if hostname is set
  net user Administrator Pa`$`$w0rd
- Set-DnsClientServerAddress -InterfaceIndex (Get-DnsClientServerAddress | Where-Object {$_.AddressFamily -eq '2' -and $_.InterfaceAlias -eq 'Ethernet'} | Select-Object -ExpandProperty InterfaceIndex) -ServerAddresses ('10.0.0.100')
- $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
- echo "10.0.0.10.10 duckdns.com www.duckdns.com aep.duckdns.com" >> C:\Windows\System32\drivers\etc\hosts
+ Set-DnsClientServerAddress -InterfaceIndex (Get-DnsClientServerAddress | Where-Object {$_.AddressFamily -eq '2' -and $_.InterfaceAlias -eq 'Ethernet'} | Select-Object -ExpandProperty InterfaceIndex) -ServerAddresses ('10.0.0.100') # Set DHCP to DC-1
+ $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8' # Change echo to UTF-8
+ echo "10.0.10.10 duckdns.com www.duckdns.com aep.duckdns.com" >> C:\Windows\System32\drivers\etc\hosts # DNS for RedOps
  Rename-Computer -NewName "SRV-1" -Restart
 }
-if ((Get-WmiObject Win32_ComputerSystem).Domain -ne "blueops.com"){
+if ((Get-WmiObject Win32_ComputerSystem).Domain -ne "blueops.com"){ # If not connected to DC-1, connect every minute
 	while ((Get-WmiObject Win32_ComputerSystem).Domain -ne "blueops.com"){
 	 Start-Sleep -Seconds 60
 	 $Creds = New-Object pscredential -ArgumentList ([pscustomobject]@{
@@ -92,8 +101,8 @@ if ((Get-WmiObject Win32_ComputerSystem).Domain -ne "blueops.com"){
 	}
 }
 try{
-	while(!(Invoke-RestMethod "https://10.0.0.10:5601/")){
-		if((Invoke-RestMethod "https://10.0.0.10:5601/") -and (Test-Path -Path "C:\Program Files\Elastic")){
+	while(!(Invoke-RestMethod "https://10.0.0.10:5601/")){ # Check if kibana is up.
+		if((Invoke-RestMethod "https://10.0.0.10:5601/") -and (Test-Path -Path "C:\Program Files\Elastic")){ # Check if elastic is installed
 			$ProgressPreference = 'SilentlyContinue'
 			Invoke-WebRequest -Uri https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.8.1-windows-x86_64.zip -OutFile elastic-agent-8.8.1-windows-x86_64.zip
 			Expand-Archive .\elastic-agent-8.8.1-windows-x86_64.zip -DestinationPath .
@@ -101,19 +110,20 @@ try{
 			$username = "elastic"
 			$password= "Pa`$`$w0rd"
 			$credential = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
-			add-type @"
-				using System.Net;
-				using System.Security.Cryptography.X509Certificates;
-				public class TrustAllCertsPolicy : ICertificatePolicy {
-					public bool CheckValidationResult(
-						ServicePoint srvPoint, X509Certificate certificate,
-						WebRequest request, int certificateProblem) {
-						return true;
-					}
-				}
-			"@
+			# Enable insecure HTTPS
+			add-type " `
+				using System.Net; `
+				using System.Security.Cryptography.X509Certificates; `
+				public class TrustAllCertsPolicy : ICertificatePolicy { `
+					public bool CheckValidationResult( `
+						ServicePoint srvPoint, X509Certificate certificate, `
+						WebRequest request, int certificateProblem) { `
+						return true; `
+					} `
+				} `
+			"
 			[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
-			.\elastic-agent.exe install --url=https://10.0.0.10:8220 --enrollment-token=$(((Invoke-RestMethod "https://10.0.0.10:5601/api/fleet/enrollment_api_keys" -Headers @{Authorization=("Basic {0}" -f $credential)}).list | where "policy_id" -eq "agent-policy" | select-object "api_key").api_key) -i -n
+			.\elastic-agent.exe install --url=https://10.0.0.10:8220 --enrollment-token=$(((Invoke-RestMethod "https://10.0.0.10:5601/api/fleet/enrollment_api_keys" -Headers @{Authorization=("Basic {0}" -f $credential)}).list | where "policy_id" -eq "agent-policy" | select-object "api_key").api_key) -i -n # Get policy id and enroll to fleet server
 		}
 	}
 }

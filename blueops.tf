@@ -47,6 +47,10 @@ resource "aws_instance" "BlueOps" {
 sudo su
 apt-get update
 apt-get upgrade -y
+
+#######################
+### Install Elastic ###
+#######################
 apt-get install curl -y
 curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/elastic-archive-keyring.gpg
 echo "deb https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-8.x.list
@@ -54,6 +58,13 @@ apt-get update
 apt-get install elasticsearch -y | grep -oP "(?<=is : ).*" | tr -d '[:space:]' > ~/elastic_password.txt
 sed -e '/cluster.initial_master_nodes/ s/^#*/#/' -i /etc/elasticsearch/elasticsearch.yml
 echo "discovery.type: single-node" | sudo tee -a /etc/elasticsearch/elasticsearch.yml
+#######################
+### Install Elastic ###
+#######################
+
+######################
+### Install Kibana ###
+######################
 apt-get install kibana
 /usr/share/kibana/bin/kibana-encryption-keys generate -q
 echo "server.host: \"10.0.0.10\"" | sudo tee -a /etc/kibana/kibana.yml
@@ -72,6 +83,13 @@ echo "server.ssl.certificate: /etc/kibana/kibana-server.crt" | sudo tee -a /etc/
 echo "server.ssl.key: /etc/kibana/kibana-server.key" | sudo tee -a /etc/kibana/kibana.yml
 echo "server.publicBaseUrl: \"https://10.0.0.10:5601\"" | sudo tee -a /etc/kibana/kibana.yml
 systemctl restart elasticsearch kibana
+######################
+### Install Kibana ###
+######################
+
+####################################
+### Add Integrations to policies ###
+####################################
 password=$(cat ~/elastic_password.txt)
 policy_id=$(curl -u elastic:$password -X POST --insecure \
   --url https://10.0.0.10:5601/api/fleet/agent_policies?sys_monitoring=true \
@@ -142,6 +160,13 @@ curl -u elastic:$password -X POST --insecure \
     }
   }
 }'
+####################################
+### Add Integrations to policies ###
+####################################
+
+############################
+### Install Fleet Server ###
+############################
 fleet_policy_id=$(curl -u elastic:$password -X POST --insecure \
   --url https://10.0.0.10:5601/api/fleet/agent_policies?sys_monitoring=true \
   --header 'content-type: application/json' \
@@ -169,6 +194,7 @@ curl -u elastic:$password -X POST --insecure \
       "https://10.0.0.10:8220"
   ]
 }'
+
 token=$(curl -u elastic:$password -X POST --insecure \
 	--url "https://192.168.60.146:9200/_security/service/elastic/fleet-server/credential/token/" 2>&1 \
 	| grep -oP '(?<="value":")[^"]+')
@@ -182,7 +208,15 @@ cd elastic-agent-8.8.1-linux-x86_64
   --fleet-server-es-ca-trusted-fingerprint=$(openssl x509 -fingerprint -sha256 -in /etc/elasticsearch/certs/http_ca.crt | grep -oP '(?<=Fingerprint=)[0-9A-F:]+' | tr -d ':') \
   --fleet-server-port=8220 \
   -i -n
+############################
+### Install Fleet Server ###
+############################
+
 printf "y\nPa\$\$w0rd\nPa\$\$w0rd" | /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -i
+
+#####################
+### Install Vectr ###
+#####################
 apt-get install \
     ca-certificates \
     curl \
@@ -206,6 +240,9 @@ sed -i "s/CHANGEMENOW/`tr -dc A-Za-z0-9 </dev/urandom | head -c 12`/g" .env
 sed -i "s/WSӠ\$8É\*X\&\*8HѲk\!^£/`tr -dc A-Za-z0-9 </dev/urandom | head -c 16`/g" .env
 sed -i "s/VПlδ4x%vЋs\$fIT@b€/`tr -dc A-Za-z0-9 </dev/urandom | head -c 16`/g" .env
 docker compose up -d
+#####################
+### Install Vectr ###
+#####################
 EOF
 
 	root_block_device {

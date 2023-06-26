@@ -32,6 +32,13 @@ resource "aws_security_group" "RedOps" {
     protocol    = "tcp"
     cidr_blocks = local.host_ip_address
   }
+  
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
 
   egress {
     from_port   = 0
@@ -49,7 +56,7 @@ resource "aws_security_group" "RedOps" {
 # Caldera, Havoc C2, apache2 w/ https
 # havoc may not build sometimes, run (make ts-build) in /opt/havoc
 resource "aws_instance" "RedOps" {
-	ami           = "ami-0df7a207adb9748c7"
+	ami           = "ami-0df7a207adb9748c7" # Ubuntu 22.04
 	instance_type = "t2.small"
 	subnet_id = aws_subnet.RedOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RedOps.id]
@@ -60,6 +67,10 @@ resource "aws_instance" "RedOps" {
 	user_data = <<-EOF
 #!/bin/bash
 sudo su
+
+#######################
+### Install Caldera ###
+#######################
 apt-get update -y
 apt-get upgrade -y
 apt-get install curl git make cmake -y
@@ -76,12 +87,26 @@ su ubuntu
 yes "" | head -n 1 | sudo /opt/caldera/plugins/builder/install.sh
 apt-get install python3-pip -y
 pip3 install -r /opt/caldera/requirements.txt
+#######################
+### Install Caldera ###
+#######################
+
 sudo su
+#############################
+### Install HTTPS Caldera ###
+#############################
 apt-get install haproxy -y
 openssl req -x509 -newkey rsa:4096  -out /opt/caldera/plugins/ssl/conf/certificate.pem -keyout /opt/caldera/plugins/ssl/conf/certificate.pem -nodes -subj "/C=SG/ST=Singapore/L=Singapore/O=RT PTE LTD/OU=IT Department/CN=duckdns.com"
 cp /opt/caldera/plugins/ssl/templates/haproxy.conf /opt/caldera/plugins/ssl/conf/
 sed -i 's/insecure_certificate.pem/certificate.pem/g' /opt/caldera/plugins/ssl/conf/haproxy.conf
 sed -i '/port: 8888/i - ssl' /opt/caldera/conf/default.yml
+#############################
+### Install HTTPS Caldera ###
+#############################
+
+############################
+### Install Havoc Server ###
+############################
 git clone https://github.com/HavocFramework/Havoc.git /opt/havoc
 cd /opt/havoc
 yes | head -n 1 | add-apt-repository ppa:deadsnakes/ppa
@@ -95,6 +120,14 @@ go mod download golang.org/x/sys
 go mod download github.com/ugorji/go
 cd ..
 make ts-build
+############################
+### Install Havoc Server ###
+############################
+
+
+###############################
+### Install Apache Redirect ###
+###############################
 apt-get install apache2 -y
 a2enmod ssl rewrite proxy proxy_http
 rm /etc/apache2/sites-enabled/000-default.conf
@@ -117,6 +150,9 @@ cp duckdns.key /etc/ssl/private/
 sed -i 's/\/etc\/ssl\/certs\/ssl-cert-snakeoil.pem/\/etc\/ssl\/certs\/duckdns.crt/' /etc/apache2/sites-enabled/default-ssl.conf
 sed -i 's/\/etc\/ssl\/private\/ssl-cert-snakeoil.key/\/etc\/ssl\/private\/duckdns.key/' /etc/apache2/sites-enabled/default-ssl.conf
 systemctl restart apache2
+###############################
+### Install Apache Redirect ###
+###############################
 chown -R ubuntu:ubuntu /opt
 EOF
 
