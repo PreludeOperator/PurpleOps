@@ -32,6 +32,7 @@ resource "aws_instance" "DC-1" {
 	instance_type = "t2.micro"
 	subnet_id = aws_subnet.BlueOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RDP.id]
+	iam_instance_profile = "${aws_iam_instance_profile.instance_profile.name}"
 	associate_public_ip_address = "false"
 	private_ip = "10.0.0.100"
 	key_name = "PurpleOps"
@@ -51,7 +52,7 @@ try{
 	if (!(dir C:\Windows\Temp\dc.ps1)){ # Check if dc.ps1 exists.
 		# Download dc.ps1 from s3 and delete it.
 		aws s3 cp ${var.object_s3_uri} C:\Windows\Temp\dc.ps1 --no-sign-request
-		aws s3 rm s3://terraform-20230623081717557100000001/dc.ps1 --no-sign-request
+		# aws s3 rm s3://terraform-20230623081717557100000001/dc.ps1 --no-sign-request
 	}
 catch{}
 Set-ExecutionPolicy RemoteSigned # Allow powershell script to run properly.
