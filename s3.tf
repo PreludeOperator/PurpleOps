@@ -8,8 +8,8 @@ resource "aws_s3_object" "user-data"{
 	etag = filemd5("./dc.ps1")
 }
 
-output "object_s3_uri" {
-  value = "s3://${aws_s3_object.user-data.bucket}/${aws_s3_object.user-data.key}"
+locals {
+  object_s3_uri = "s3://${aws_s3_object.user-data.bucket}/${aws_s3_object.user-data.key}"
 }
 
 resource "aws_iam_role" "ec2_iam_role" {

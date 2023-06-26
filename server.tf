@@ -60,7 +60,7 @@ catch{}
 try{
 	if (!(dir C:\Windows\Temp\dc.ps1)){ # Check if dc.ps1 exists.
 		# Download dc.ps1 from s3 and delete it.
-		aws s3 cp ${var.object_s3_uri} C:\Windows\Temp\dc.ps1 --no-sign-request
+		aws s3 cp ${local.object_s3_uri} C:\Windows\Temp\dc.ps1 --no-sign-request
 		# aws s3 rm s3://terraform-20230623081717557100000001/dc.ps1 --no-sign-request
 	}
 catch{}
