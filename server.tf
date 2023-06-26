@@ -40,6 +40,15 @@ resource "aws_instance" "DC-1" {
 	user_data = <<EOF
 <powershell>
 try{
+	if(!(get-process sysmon64)){ # Check if sysmon exists
+		net use \\live.sysinternals.com\tools
+		cp \\live.sysinternals.com\tools\Sysmon64.exe C:\Windows\Temp\Sysmon64.exe
+		(curl https://raw.githubusercontent.com/Neo23x0/sysmon-config/master/sysmonconfig-export-block.xml -UseBasicParsing).Content > C:\Windows\Temp\sysmonconfig.xml
+		C:\Windows\Temp\Sysmon64.exe -accepteula -i C:\Windows\Temp\sysmonconfig.xml
+	}
+}
+catch{}
+try{
 	if(!(aws help)){ # Check if AWS CLI exists
 		# Download AWS CLI tools
 		msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi /qn
@@ -84,6 +93,15 @@ resource "aws_instance" "SRV-1" {
 	depends_on = [aws_internet_gateway.PurpleOps-IG]
 	user_data = <<EOF
 <powershell>
+try{
+	if(!(get-process sysmon64)){ # Check if sysmon exists
+		net use \\live.sysinternals.com\tools
+		cp \\live.sysinternals.com\tools\Sysmon64.exe C:\Windows\Temp\Sysmon64.exe
+		(curl https://raw.githubusercontent.com/Neo23x0/sysmon-config/master/sysmonconfig-export-block.xml -UseBasicParsing).Content > C:\Windows\Temp\sysmonconfig.xml
+		C:\Windows\Temp\Sysmon64.exe -accepteula -i C:\Windows\Temp\sysmonconfig.xml
+	}
+}
+catch{}
 if ((hostname) -ne "SRV-1"){ # Check if hostname is set
  net user Administrator Pa`$`$w0rd
  Set-DnsClientServerAddress -InterfaceIndex (Get-DnsClientServerAddress | Where-Object {$_.AddressFamily -eq '2' -and $_.InterfaceAlias -eq 'Ethernet'} | Select-Object -ExpandProperty InterfaceIndex) -ServerAddresses ('10.0.0.100') # Set DHCP to DC-1
