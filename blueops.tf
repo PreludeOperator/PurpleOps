@@ -35,7 +35,7 @@ resource "aws_security_group" "BlueOps" {
 }
 
 resource "aws_instance" "BlueOps" {
-	ami           = "ami-0df7a207adb9748c7"
+	ami           = "ami-0666798135ce10443" # Ubuntu 22.04
 	instance_type = "t2.medium"
 	subnet_id = aws_subnet.BlueOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.BlueOps.id]

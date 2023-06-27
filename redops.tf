@@ -56,7 +56,7 @@ resource "aws_security_group" "RedOps" {
 # Caldera, Havoc C2, apache2 w/ https
 # havoc may not build sometimes, run (make ts-build) in /opt/havoc
 resource "aws_instance" "RedOps" {
-	ami           = "ami-0df7a207adb9748c7" # Ubuntu 22.04
+	ami           = "ami-0666798135ce10443" # Ubuntu 22.04
 	instance_type = "t2.small"
 	subnet_id = aws_subnet.RedOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RedOps.id]
