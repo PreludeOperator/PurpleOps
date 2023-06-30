@@ -9,13 +9,6 @@ resource "aws_security_group" "BlueOps" {
   }
   
   ingress {
-    from_port   = 8081
-    to_port     = 8081
-    protocol    = "tcp"
-    cidr_blocks = local.host_ip_address
-  }
-  
-  ingress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -35,7 +28,7 @@ resource "aws_security_group" "BlueOps" {
 }
 
 resource "aws_instance" "BlueOps" {
-	ami           = "ami-0666798135ce10443" # Ubuntu 22.04
+	ami           = "ami-0df7a207adb9748c7" # Ubuntu 22.04
 	instance_type = "t2.medium"
 	subnet_id = aws_subnet.BlueOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.BlueOps.id]
@@ -43,7 +36,8 @@ resource "aws_instance" "BlueOps" {
 	private_ip = "10.0.0.10"
 	key_name = "PurpleOps"
 	depends_on = [aws_internet_gateway.PurpleOps-IG]
-	user_data = <<EOF
+	user_data = <<-EOF
+#!/bin/bash
 sudo su
 apt-get update
 apt-get upgrade -y
@@ -67,7 +61,7 @@ echo "discovery.type: single-node" | sudo tee -a /etc/elasticsearch/elasticsearc
 ######################
 apt-get install kibana
 /usr/share/kibana/bin/kibana-encryption-keys generate -q
-echo "server.host: \"10.0.0.10\"" | sudo tee -a /etc/kibana/kibana.yml
+echo "server.host: \"0.0.0.0\"" | sudo tee -a /etc/kibana/kibana.yml
 systemctl enable elasticsearch kibana --now
 /usr/share/kibana/bin/kibana-setup -t `/usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana`
 /usr/share/elasticsearch/bin/elasticsearch-certutil ca --out elastic-stack-ca.p12 --pass ""
@@ -81,7 +75,7 @@ chmod 660 /etc/kibana/kibana-server.crt
 echo "server.ssl.enabled: true" | sudo tee -a /etc/kibana/kibana.yml
 echo "server.ssl.certificate: /etc/kibana/kibana-server.crt" | sudo tee -a /etc/kibana/kibana.yml
 echo "server.ssl.key: /etc/kibana/kibana-server.key" | sudo tee -a /etc/kibana/kibana.yml
-echo "server.publicBaseUrl: \"https://10.0.0.10:5601\"" | sudo tee -a /etc/kibana/kibana.yml
+echo "server.publicBaseUrl: \"https://`curl http://169.254.169.254/latest/meta-data/public-ipv4`:5601\"" | sudo tee -a /etc/kibana/kibana.yml
 systemctl restart elasticsearch kibana
 ######################
 ### Install Kibana ###
@@ -90,6 +84,7 @@ systemctl restart elasticsearch kibana
 ####################################
 ### Add Integrations to policies ###
 ####################################
+sleep 120
 password=$(cat ~/elastic_password.txt)
 policy_id=$(curl -u elastic:$password -X POST --insecure \
   --url https://10.0.0.10:5601/api/fleet/agent_policies?sys_monitoring=true \
@@ -175,10 +170,6 @@ fleet_policy_id=$(curl -u elastic:$password -X POST --insecure \
   "name":"Fleet policy",
   "namespace":"default",
   "description": "",
-  "monitoring_enabled": [
-    "logs",
-    "metrics"
-  ],
   "has_fleet_server": "true"
   }' 2>&1 \
   | grep -oP '(?<="id":")[^"]+')
@@ -196,7 +187,7 @@ curl -u elastic:$password -X POST --insecure \
 }'
 
 token=$(curl -u elastic:$password -X POST --insecure \
-	--url "https://192.168.60.146:9200/_security/service/elastic/fleet-server/credential/token/" 2>&1 \
+	--url "https://10.0.0.10:9200/_security/service/elastic/fleet-server/credential/token/" 2>&1 \
 	| grep -oP '(?<="value":")[^"]+')
 curl -L -O https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.8.1-linux-x86_64.tar.gz
 tar xzvf elastic-agent-8.8.1-linux-x86_64.tar.gz
@@ -213,42 +204,12 @@ cd elastic-agent-8.8.1-linux-x86_64
 ############################
 
 printf "y\nPa\$\$w0rd\nPa\$\$w0rd" | /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -i
-
-#####################
-### Install Vectr ###
-#####################
-apt-get install \
-    ca-certificates \
-    curl \
-    gnupg \
-    unzip \
-    lsb-release
-mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-apt-get update
-apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
-mkdir -p /opt/vectr
-cd /opt/vectr
-wget https://github.com/SecurityRiskAdvisors/VECTR/releases/download/ce-8.8.1/sra-vectr-runtime-8.8.1-ce.zip 
-unzip sra-vectr-runtime-8.8.1-ce.zip
-sed -i 's/sravectr.internal/blueops.com/g' .env
-sed -i 's/Test1234/Pa\$\$w0rd/g' .env
-sed -i "s/CHANGEMENOW/`tr -dc A-Za-z0-9 </dev/urandom | head -c 12`/g" .env
-sed -i "s/WSӠ\$8É\*X\&\*8HѲk\!^£/`tr -dc A-Za-z0-9 </dev/urandom | head -c 16`/g" .env
-sed -i "s/VПlδ4x%vЋs\$fIT@b€/`tr -dc A-Za-z0-9 </dev/urandom | head -c 16`/g" .env
-docker compose up -d
-#####################
-### Install Vectr ###
-#####################
 EOF
 
 	root_block_device {
 	volume_size           = "60" # Probably will last 1 week
 	volume_type           = "gp3"
-	encrypted             = true
+	encrypted             = false
 	delete_on_termination = true
 	}
 

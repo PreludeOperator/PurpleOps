@@ -1,5 +1,5 @@
 provider "aws" {
-	region = "ap-southeast-1" # $$$ ap-southeast-1 (Singapore) > ap-south-1 (India) > us-east-1 (US)
+  region = "ap-southeast-1" # $$$ ap-southeast-1 (Singapore) > ap-south-1 (India) > us-east-1 (US)
 }
 
 data "http" "ip" {
@@ -18,6 +18,7 @@ resource "tls_private_key" "PurpleOps-key" {
 
 resource "aws_key_pair" "PurpleOps-key" {
   key_name   = "PurpleOps"
+  #public_key = file("./keys/id_rsa.pub")
   public_key = tls_private_key.PurpleOps-key.public_key_openssh
 }
 

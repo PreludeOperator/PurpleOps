@@ -20,6 +20,12 @@ resource "aws_security_group" "RedOps" {
     cidr_blocks = local.host_ip_address
   }
   ingress {
+    from_port   = 8081
+    to_port     = 8081
+    protocol    = "tcp"
+    cidr_blocks = local.host_ip_address
+  }
+  ingress {
     from_port   = 8443
     to_port     = 8443
     protocol    = "tcp"
@@ -56,8 +62,8 @@ resource "aws_security_group" "RedOps" {
 # Caldera, Havoc C2, apache2 w/ https
 # havoc may not build sometimes, run (make ts-build) in /opt/havoc
 resource "aws_instance" "RedOps" {
-	ami           = "ami-0666798135ce10443" # Ubuntu 22.04
-	instance_type = "t2.small"
+	ami           = "ami-0df7a207adb9748c7" # Ubuntu 22.04
+	instance_type = "t2.medium"
 	subnet_id = aws_subnet.RedOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RedOps.id]
 	associate_public_ip_address = "true"
@@ -82,7 +88,7 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt-get update
 apt-cache policy docker-ce
-apt-get install docker-ce -y
+apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin unzip -y
 su ubuntu
 yes "" | head -n 1 | sudo /opt/caldera/plugins/builder/install.sh
 apt-get install python3-pip -y
@@ -153,13 +159,44 @@ systemctl restart apache2
 ###############################
 ### Install Apache Redirect ###
 ###############################
+
+#####################
+### Install Vectr ###
+#####################
+apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    unzip \
+    lsb-release
+#mkdir -p /etc/apt/keyrings
+#curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+#echo \
+#  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+#  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+#apt-get update -y
+#apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin unzip -y
+mkdir -p /opt/vectr
+cd /opt/vectr
+wget https://github.com/SecurityRiskAdvisors/VECTR/releases/download/ce-8.8.1/sra-vectr-runtime-8.8.1-ce.zip 
+unzip sra-vectr-runtime-8.8.1-ce.zip
+sed -i 's/sravectr.internal/blueops.com/g' .env
+sed -i 's/Test1234/Pa\$\$w0rd/g' .env
+sed -i "s/CHANGEMENOW/`tr -dc A-Za-z0-9 </dev/urandom | head -c 12`/g" .env
+sed -i "s/WSӠ\$8É\*X\&\*8HѲk\!^£/`tr -dc A-Za-z0-9 </dev/urandom | head -c 16`/g" .env
+sed -i "s/VПlδ4x%vЋs\$fIT@b€/`tr -dc A-Za-z0-9 </dev/urandom | head -c 16`/g" .env
+#docker compose up -d
+#####################
+### Install Vectr ###
+#####################
+
 chown -R ubuntu:ubuntu /opt
 EOF
 
 	root_block_device {
 	volume_size           = "30"
 	volume_type           = "gp3"
-	encrypted             = true
+	encrypted             = false
 	delete_on_termination = true
 	}
 
