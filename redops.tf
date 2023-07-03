@@ -63,7 +63,7 @@ resource "aws_security_group" "RedOps" {
 # havoc may not build sometimes, run (make ts-build) in /opt/havoc
 resource "aws_instance" "RedOps" {
 	ami           = "ami-0df7a207adb9748c7" # Ubuntu 22.04
-	instance_type = "t2.medium"
+	instance_type = "t2.small"
 	subnet_id = aws_subnet.RedOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RedOps.id]
 	associate_public_ip_address = "true"
@@ -169,6 +169,7 @@ apt-get install \
     gnupg \
     unzip \
     lsb-release
+### Uncomment when docker is not installed yet:
 #mkdir -p /etc/apt/keyrings
 #curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 #echo \

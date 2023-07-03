@@ -28,15 +28,15 @@ resource "aws_security_group" "RDP" {
 }
 
 resource "aws_instance" "DC-1" {
-	ami           = "ami-0df7a207adb9748c7" # Windows Server 2016 base
+	depends_on = [ aws_key_pair.PurpleOps-key, aws_internet_gateway.PurpleOps-IG ]
+	ami           = "ami-07d6602d4c3d698e2" # Windows Server 2016 base
 	instance_type = "t2.small"
 	subnet_id = aws_subnet.BlueOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RDP.id]
-	iam_instance_profile = "${aws_iam_instance_profile.instance_profile.name}"
+	iam_instance_profile = "${aws_iam_instance_profile.purpleops-instance-profile.name}"
 	associate_public_ip_address = "true"
 	private_ip = "10.0.0.100"
 	key_name = "PurpleOps"
-	depends_on = [aws_internet_gateway.PurpleOps-IG]
 	user_data = <<-EOF
 <powershell>
 try{
@@ -83,14 +83,14 @@ EOF
 }
 
 resource "aws_instance" "SRV-1" {
-	ami           = "ami-01f9e90b63205a63e" # Windows Server 2016 base
+	depends_on = [ aws_key_pair.PurpleOps-key, aws_internet_gateway.PurpleOps-IG ]
+	ami           = "ami-07d6602d4c3d698e2" # Windows Server 2016 base
 	instance_type = "t2.small"
 	subnet_id = aws_subnet.BlueOps-Subnet.id
 	vpc_security_group_ids = [aws_security_group.RDP.id]
 	associate_public_ip_address = "true"
 	private_ip = "10.0.0.101"
 	key_name = "PurpleOps"
-	depends_on = [aws_internet_gateway.PurpleOps-IG]
 	user_data = <<-EOF
 <powershell>
 try{
