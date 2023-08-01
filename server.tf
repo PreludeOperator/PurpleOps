@@ -109,7 +109,7 @@ if ((hostname) -ne "SRV-1"){ # Check if hostname is set
  net user Administrator Pa`$`$w0rd
  Set-DnsClientServerAddress -InterfaceIndex (Get-DnsClientServerAddress | Where-Object {$_.AddressFamily -eq '2' -and $_.InterfaceAlias -eq 'Ethernet'} | Select-Object -ExpandProperty InterfaceIndex) -ServerAddresses ('10.0.0.100') # Set DHCP to DC-1
  $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8' # Change echo to UTF-8
- echo "10.0.10.10 duckdns.com www.duckdns.com aep.duckdns.com" >> C:\Windows\System32\drivers\etc\hosts # DNS for RedOps
+ echo "10.0.10.10 duckdns.org www.duckdns.org aep.duckdns.org" >> C:\Windows\System32\drivers\etc\hosts # DNS for RedOps
  Rename-Computer -NewName "SRV-1" -Restart
 }
 # Enable insecure HTTPs
