@@ -5,7 +5,7 @@ if ((hostname) -ne "DC-1"){
  Rename-Computer -NewName "DC-1" -Restart
  net user Administrator Pa`$`$w0rd
  $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
- echo "10.0.10.10 duckdns.com www.duckdns.com aep.duckdns.com" >> C:\Windows\System32\drivers\etc\hosts
+ echo "10.0.10.10 duckdns.org www.duckdns.org aep.duckdns.org" >> C:\Windows\System32\drivers\etc\hosts
 }
 try {
     Get-AdForest -current LocalComputer

@@ -102,7 +102,7 @@ sudo su
 ### Install HTTPS Caldera ###
 #############################
 apt-get install haproxy -y
-openssl req -x509 -newkey rsa:4096  -out /opt/caldera/plugins/ssl/conf/certificate.pem -keyout /opt/caldera/plugins/ssl/conf/certificate.pem -nodes -subj "/C=SG/ST=Singapore/L=Singapore/O=RT PTE LTD/OU=IT Department/CN=duckdns.com"
+openssl req -x509 -newkey rsa:4096  -out /opt/caldera/plugins/ssl/conf/certificate.pem -keyout /opt/caldera/plugins/ssl/conf/certificate.pem -nodes -subj "/C=SG/ST=Singapore/L=Singapore/O=RT PTE LTD/OU=IT Department/CN=duckdns.org"
 cp /opt/caldera/plugins/ssl/templates/haproxy.conf /opt/caldera/plugins/ssl/conf/
 sed -i 's/insecure_certificate.pem/certificate.pem/g' /opt/caldera/plugins/ssl/conf/haproxy.conf
 sed -i '/port: 8888/i - ssl' /opt/caldera/conf/default.yml
@@ -139,7 +139,7 @@ a2enmod ssl rewrite proxy proxy_http
 rm /etc/apache2/sites-enabled/000-default.conf
 ln -s /etc/apache2/sites-available/default-ssl.conf /etc/apache2/sites-enabled/default-ssl.conf
 openssl genrsa -out duckdns.key 2048
-openssl req -new -key duckdns.key -out duckdns.csr -subj "/C=SG/ST=Singapore/L=Singapore/O=RT PTE LTD/OU=IT Department/CN=duckdns.com"
+openssl req -new -key duckdns.key -out duckdns.csr -subj "/C=SG/ST=Singapore/L=Singapore/O=RT PTE LTD/OU=IT Department/CN=duckdns.org"
 cat << END > duckdns.ext
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
@@ -147,8 +147,8 @@ keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = duckdns.com
-DNS.2 = www.duckdns.com
+DNS.1 = duckdns.org
+DNS.2 = www.duckdns.org
 END
 openssl x509 -req -in duckdns.csr -out duckdns.crt -days 365 -sha256 -extfile duckdns.ext -key duckdns.key
 cp duckdns.crt /etc/ssl/certs/
